@@ -5,6 +5,8 @@ package com.andrewsoft.aromabuilder;
 
 import java.io.File;
 
+import javax.swing.SwingWorker;
+
 import net.lingala.zip4j.core.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.progress.*;
@@ -46,30 +48,29 @@ public class ProjectObject {
 	}
 	
 	public boolean addRom(ZipFile rom) throws ZipException {
-		rom.setRunInThread(true);
-		rom.extractAll(mRomDir);
-		final ProgressMonitor monitor = rom.getProgressMonitor();
 		final ZipCompress zDialog = new ZipCompress(null, "Kicsomagolás");
-		Thread t = new Thread(new Runnable() {
+		SwingWorker<Void, Void> sw = new SwingWorker<Void, Void>(){
+
 			@Override
-			public void run() {
-				zDialog.setVisible(true);
+			protected Void doInBackground() throws Exception {
+				// TODO Auto-generated method stub
+				rom.setRunInThread(true);
+				rom.extractAll(mRomDir);
+				final ProgressMonitor monitor = rom.getProgressMonitor();
+				while (monitor.getState() == ProgressMonitor.STATE_BUSY) {
+					zDialog.setFileName(monitor.getFileName());
+				}
+				return null;
 			}
-		});
-		t.start();
-		
-		while (monitor.getState() == ProgressMonitor.STATE_BUSY)
-		{
-			zDialog.setFileName(monitor.getFileName());
-			zDialog.setProgress(monitor.getPercentDone());
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			
+			@Override
+			protected void done() {
+				zDialog.dispose();
 			}
-		}
-		zDialog.close();
+			
+		};
+		sw.execute();
+		zDialog.setVisible(true);
 		ParseRomAssets();
 		return true;
 	}
